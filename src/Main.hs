@@ -18,33 +18,29 @@ import           Enemy                          ( renderBlinky
                                                 , renderInky
                                                 , renderPinky
                                                 , moveGhost
-                                                , ghostWallBounce
                                                 , turnGhost
+                                                , whichMove
                                                 )
 import           GameState
 import           Maze                           ( mazePicture
                                                 , wallIndex
                                                 )
 
--- start location of our PacMan
-startLoc :: Vector
-startLoc = (300, -470)
-
-startLocAI :: Vector
-startLocAI = (170, -230)
-
 -- initialState of the game
 initialState :: PacGame
 initialState = Game
-        { status  = MENU
-        , moves   = []
-        , lives   = 3
-        , dots    = initDotsArray
-        , pacman = Ghost {loc = startLoc, vel = (0, 0)}
-        , inky    = Ghost {loc = startLocAI, vel = leftVel}
-        , pinky   = Ghost {loc = (0, 0), vel = (0, 0)}
-        , blinky  = Ghost {loc = (0, 0), vel = (0, 0)}
-        , clyde   = Ghost {loc = (0, 0), vel = (0, 0)}
+        { time       = 0.0
+        , status     = MENU
+        , moves      = [LEFT]
+        , lives      = 3
+        , dots       = initDotsArray
+        , pacman     = Ghost {name = PACMAN, loc = startLocPac, vel = (0, 0)}
+        , inky       = Ghost {name = INKY, loc = startLocInky, vel = (0, 0)}
+        , pinky      = Ghost {name = PINKY, loc = startLocPinky, vel = (0, 0)}
+        , blinky     = Ghost {name = BLINKY, loc = startLocBlinky, vel = (0, 0)}
+        , clyde      = Ghost {name = CLYDE, loc = startLocClyde, vel = (0, 0)}
+        , ghostMode  = SCATTER
+        , ghostSpeed = 100 -- make sure speed is a multiple of blocksize
         }
 
 -- renders pacman as a picture
@@ -56,7 +52,7 @@ renderPacman game = translate x y $ color yellow $ circleSolid blockSize
 -- moves the pacman around with seconds as a parameter
 movePacman :: Float -> PacGame -> PacGame
 movePacman seconds game = game
-        { pacman = Ghost {loc = (x', y'), vel = (vx, vy)}
+        { pacman = Ghost {name = PACMAN, loc = (x', y'), vel = (vx, vy)}
         }
     where
         (x , y ) = (loc $ pacman game)
@@ -87,18 +83,38 @@ executeMove game
         move     = if not $ null mvs then head $ mvs else NONE
       -- make sure we don't use head on a empty list
         newMoves m = filter (\move -> move /= m) mvs
-        goUp = game { moves   = (newMoves UP)
-                    , pacman = Ghost {vel = upVel, loc = (lx', ly')}
-                    }
-        goDown = game { moves   = (newMoves DOWN)
-                      , pacman = Ghost {vel = downVel, loc = (lx', ly')}
-                      }
-        goLeft = game { moves   = (newMoves LEFT)
-                      , pacman = Ghost {vel = leftVel, loc = (lx', ly')}
-                      }
-        goRight = game { moves   = (newMoves RIGHT)
-                       , pacman = Ghost {vel = rightVel, loc = (lx', ly')}
-                       }
+        goUp = game
+                { moves  = (newMoves UP)
+                , pacman = Ghost
+                                   { name = PACMAN
+                                   , vel  = upVel pacSpeed
+                                   , loc  = (lx', ly')
+                                   }
+                }
+        goDown = game
+                { moves  = (newMoves DOWN)
+                , pacman = Ghost
+                                   { name = PACMAN
+                                   , vel  = downVel pacSpeed
+                                   , loc  = (lx', ly')
+                                   }
+                }
+        goLeft = game
+                { moves  = (newMoves LEFT)
+                , pacman = Ghost
+                                   { name = PACMAN
+                                   , vel  = leftVel pacSpeed
+                                   , loc  = (lx', ly')
+                                   }
+                }
+        goRight = game
+                { moves  = (newMoves RIGHT)
+                , pacman = Ghost
+                                   { name = PACMAN
+                                   , vel  = rightVel pacSpeed
+                                   , loc  = (lx', ly')
+                                   }
+                }
 
 -- round off lx,ly to keep it as a multiple of blocksize
 -- remove the executed move from the moves array
@@ -116,22 +132,22 @@ handleKeys (EventKey (SpecialKey key) _ _ _) game = case key of
 handleKeys _ game = game
 
 renderUI :: PacGame -> Picture
-renderUI game = color white $ scale 0.1 0.1 $ Text $ show (avalMoves (ix, iy))
+renderUI game =
+        color white
+                $  scale 0.1 0.1
+                $  Text
+                $  show (lx, ly)
+                ++ show totalLives
+                ++ show totalDots
+                ++ show clock
+                ++ show (ghostMode game)
     where
+        clock      = time game
         totalDots  = length (dots game)
         totalLives = (lives game)
-        (x , y )   = (loc $ pacman game)
-        (vx, vy)   = (vel $ pacman game)
-        avalMoves (x, y) = filter (\m -> isValidMove (x, y) m && (moveToVel m) /= (vix,viy)) moves
-        moveToVel m = case m of
-                UP    -> upVel
-                DOWN  -> downVel
-                LEFT  -> leftVel
-                RIGHT -> rightVel
-                _     -> (0, 0)
-        moves      = if (vix,viy) == (upVel) || (vix,viy) == downVel
-                        then [LEFT, RIGHT]
-                    else [UP,DOWN]
+        -- pacman
+        (lx , ly ) = (loc $ pacman game)
+        (vx , vy ) = (vel $ pacman game)
         -- inky
         (ix , iy ) = (loc $ inky game)
         (vix, viy) = (vel $ inky game)
@@ -143,8 +159,29 @@ isDotsComplete game | length (dots game) == 0 = game { status = WON }
 hitGhost :: PacGame -> PacGame
 hitGhost game
         | elem (rx, ry) rOffsets = game
-                { lives   = ls - 1
-                , pacman = Ghost {loc = startLoc, vel = (0, 0)}
+                { time   = 0
+                , lives  = ls - 1
+                , pacman = Ghost
+                                   { name = PACMAN
+                                   , loc  = startLocPac
+                                   , vel  = (0, 0)
+                                   }
+                , inky   = Ghost {name = INKY, loc = startLocInky, vel = (0, 0)}
+                , pinky  = Ghost
+                                   { name = PINKY
+                                   , loc  = startLocPinky
+                                   , vel  = (0, 0)
+                                   }
+                , blinky = Ghost
+                                   { name = BLINKY
+                                   , loc  = startLocBlinky
+                                   , vel  = (0, 0)
+                                   }
+                , clyde  = Ghost
+                                   { name = CLYDE
+                                   , loc  = startLocClyde
+                                   , vel  = (0, 0)
+                                   }
                 }
         | otherwise = game
     where
@@ -160,9 +197,18 @@ hitGhost game
                 ]
         blockOffset = blockSize / 2
         offsets     = foldr (++) [] $ map f aiLocs
-        f (x, y) = if (vx, vy) == upVel || (vx, vy) == downVel
-                then [(x,y),(x, y + blockOffset), (x, y - blockOffset)]
-                else [(x,y),(x + blockOffset, y), (x - blockOffset, y)]
+        f (x, y) =
+                if (vx, vy) == upVel pacSpeed || (vx, vy) == downVel pacSpeed
+                        then
+                                [ (x, y)
+                                , (x, y + blockOffset)
+                                , (x, y - blockOffset)
+                                ]
+                        else
+                                [ (x              , y)
+                                , (x + blockOffset, y)
+                                , (x - blockOffset, y)
+                                ]
         rOffsets = map (\(x, y) -> (round x, round y)) offsets
 
 outOfLives :: PacGame -> PacGame
@@ -197,6 +243,18 @@ render game
                 , (renderDots game)
                 ]
 
+changeGhostMode :: PacGame -> PacGame
+changeGhostMode game | seconds < 7  = game { ghostMode = SCATTER }
+                     | seconds < 27 = game { ghostMode = CHASE }
+                     | seconds < 32 = game { ghostMode = SCATTER }
+                     | seconds < 37 = game { ghostMode = CHASE }
+                     | seconds < 42 = game { ghostMode = SCATTER }
+                     | otherwise    = game { ghostMode = CHASE }
+        where seconds = time game
+
+updateTime :: PacGame -> PacGame
+updateTime game = game { time = (time game) + 1 / 60 }
+
 main :: IO ()
 main = do
         play mainWindow bgColor fps initialState render handleKeys update
@@ -212,8 +270,9 @@ main = do
         update seconds game =
                 movePacman seconds
                         $ moveGhost seconds
+                        $ updateTime
                         $ turnGhost
-                        $ ghostWallBounce
+                        $ changeGhostMode
                         $ wallBounce
                         $ executeMove
                         $ isDotsComplete

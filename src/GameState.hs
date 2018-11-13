@@ -1,13 +1,30 @@
 -- game data structures and common variables are stored here
 module GameState where
 
-import Graphics.Gloss
+import           Graphics.Gloss
 
 fps :: Int
 fps = 60
 
 pacSpeed :: Float
-pacSpeed = 100
+pacSpeed = 120
+
+-- start location of our characters
+-- multiples of blockSize + blockSize / 2
+startLocPac :: Vector
+startLocPac = (300, -470)
+
+startLocInky :: Vector
+startLocInky = (570, -30)
+
+startLocPinky :: Vector
+startLocPinky = (170, -230)
+
+startLocBlinky :: Vector
+startLocBlinky = (170, -230)
+
+startLocClyde :: Vector
+startLocClyde = (170, -230)
 
 wallColor :: Color
 wallColor = red
@@ -21,7 +38,6 @@ transparent = makeColor 0 0 0 0
 blockSize :: Float
 blockSize = 20
 
--- literally magic here
 blockOffset :: Float
 blockOffset = blockSize / 2
 
@@ -40,35 +56,53 @@ nextNextBlock = nextBlock + nextBlock
 rNextNextBlock :: Int
 rNextNextBlock = round nextNextBlock
 
+fourCorners :: [Vector]
+fourCorners = [topLeft, topRight, bottomLeft, bottomRight]
+    where
+        topLeft     = (1 * blockSize, (-1) * blockSize)
+        topRight    = (30 * blockSize, (-1) * blockSize)
+        bottomLeft  = (1 * blockSize, (-31) * blockSize)
+        bottomRight = (30 * blockSize, (-31) * blockSize)
+
+
 zeroVel :: Vector
 zeroVel = (0, 0)
 
-upVel :: Vector
-upVel = (0, pacSpeed)
+upVel :: Float -> Vector
+upVel speed = (0, speed)
 
-downVel :: Vector
-downVel = (0, -pacSpeed)
+downVel :: Float -> Vector
+downVel speed = (0, -speed)
 
-leftVel :: Vector
-leftVel = (-pacSpeed, 0)
+leftVel :: Float -> Vector
+leftVel speed = (-speed, 0)
 
-rightVel :: Vector
-rightVel = (pacSpeed, 0)
+rightVel :: Float -> Vector
+rightVel speed = (speed, 0)
 
 noDotsZone :: [(Vector, Vector)]
-noDotsZone =
-  [ ((0 * blockSize, 7 * blockSize), ((-10) * blockSize, (-20) * blockSize))
-  , ((23 * blockSize, 30 * blockSize), ((-10) * blockSize, (-20) * blockSize))
-  , ((8 * blockSize, 22 * blockSize), ((-9) * blockSize, (-20) * blockSize))
-  ]
+noDotsZone
+        = [ ( (0 * blockSize    , 7 * blockSize)
+            , ((-10) * blockSize, (-20) * blockSize)
+            )
+          , ( (23 * blockSize   , 30 * blockSize)
+            , ((-10) * blockSize, (-20) * blockSize)
+            )
+          , ( (8 * blockSize   , 22 * blockSize)
+            , ((-9) * blockSize, (-20) * blockSize)
+            )
+          ]
+
+noUpZone :: [(Int, Int)]
+noUpZone = [(270, -230), (330, -230), (270, -470), (330, -470)]
 
 data Move
   = UP
-  | DOWN
   | LEFT
+  | DOWN
   | RIGHT
   | NONE
-  deriving (Eq, Show)
+  deriving (Eq, Show, Ord)
 
 data Status
   = MENU
@@ -76,14 +110,22 @@ data Status
   | LOST
   deriving (Eq, Show)
 
+-- pacman is a type of ghost himself
+-- you've become the very thing you swore to destroy
 data Ghost = Ghost
-  { loc :: Vector
+  { name :: GhostName
+  , loc :: Vector
   , vel :: Vector
   } deriving (Eq, Show)
 
+data GhostName = PACMAN | INKY | PINKY | BLINKY | CLYDE deriving (Eq, Show)
+
+data GhostMode = SCATTER | CHASE | STUNNED deriving (Eq, Show)
+
 -- data structure that represents the state of the game
 data PacGame = Game
-  { status :: Status
+  { time :: Float
+  , status :: Status
   , moves :: [Move]
   , lives :: Int
   , dots :: [Vector]
@@ -92,4 +134,6 @@ data PacGame = Game
   , pinky :: Ghost
   , blinky :: Ghost
   , clyde :: Ghost
+  , ghostMode :: GhostMode
+  , ghostSpeed :: Float
   } deriving (Show)

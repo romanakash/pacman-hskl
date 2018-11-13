@@ -10,7 +10,7 @@ wallBounce game
         |
         --if a collision is detected stops pacman
           wallCollision (vx, vy) (lx, ly) = game
-                { pacman = Ghost {vel = (0, 0), loc = (lx', ly')}
+                { pacman = Ghost {name = PACMAN, vel = (0, 0), loc = (lx', ly')}
                 }
         | otherwise = game
     where
@@ -47,22 +47,22 @@ wallCollision (vx, vy) (x, y)
         |
     -- when moving
     -- right
-          (vx, vy) == rightVel
+          (vx, vy) == rightVel pacSpeed
         = elem (ry + rBlockOffset, rx + rNextBlock) intWallIndex
                 || elem (ry - rBlockOffset, rx + rNextBlock) intWallIndex
         |
     -- left
-          (vx, vy) == leftVel
+          (vx, vy) == leftVel pacSpeed
         = elem (ry + rBlockOffset, rx - rNextBlock) intWallIndex
                 || elem (ry - rBlockOffset, rx - rNextBlock) intWallIndex
         |
     -- up
-          (vx, vy) == upVel
+          (vx, vy) == upVel pacSpeed
         = elem (ry + rNextBlock, rx + rBlockOffset) intWallIndex
                 || elem (ry + rNextBlock, rx - rBlockOffset) intWallIndex
         |
     -- down
-          (vx, vy) == downVel
+          (vx, vy) == downVel pacSpeed
         = elem (ry - rNextBlock, rx + rBlockOffset) intWallIndex
                 || elem (ry - rNextBlock, rx - rBlockOffset) intWallIndex
         |
