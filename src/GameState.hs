@@ -7,7 +7,7 @@ fps :: Int
 fps = 60
 
 pacSpeed :: Float
-pacSpeed = 120
+pacSpeed = 150
 
 -- start location of our characters
 -- multiples of blockSize + blockSize / 2
@@ -15,19 +15,22 @@ startLocPac :: Vector
 startLocPac = (300, -470)
 
 startLocInky :: Vector
-startLocInky = (570, -30)
+startLocInky = (270, -290)
 
 startLocPinky :: Vector
-startLocPinky = (170, -230)
+startLocPinky = (270, -290)
 
 startLocBlinky :: Vector
-startLocBlinky = (170, -230)
+startLocBlinky = (330, -290)
 
 startLocClyde :: Vector
-startLocClyde = (170, -230)
+startLocClyde = (330, -290)
+
+ghostEntryLoc :: Vector
+ghostEntryLoc = (300,-230)
 
 wallColor :: Color
-wallColor = red
+wallColor = blue
 
 dotColor :: Color
 dotColor = light green
@@ -55,6 +58,9 @@ nextNextBlock = nextBlock + nextBlock
 
 rNextNextBlock :: Int
 rNextNextBlock = round nextNextBlock
+
+rListOfTuples :: [(Float,Float)] -> [(Int,Int)]
+rListOfTuples l =  map (\(fx, fy) -> (round fx, round fy)) l
 
 fourCorners :: [Vector]
 fourCorners = [topLeft, topRight, bottomLeft, bottomRight]

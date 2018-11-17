@@ -1,9 +1,9 @@
--- for some reason the maze was designed to be rendered in the second quadrant
+{-- for some reason the maze was designed to be rendered in the second quadrant
 -- by the time I realized what was happening it was already too late to fix it
 -- so a typical cordinate is (x,-y)
 -- i = line no of mazeInString, j = char no of mazeInString
--- j == x co-ordinate, -i == y co-ordinate
--- also multi line comments suck
+-- j == x co-ordinate, -i == y co-ordinate --}
+
 module Maze where
 import           Graphics.Gloss
 
@@ -25,8 +25,8 @@ mazeInString =
         "      |  |           |  |      ",
         "      |  |           |  |      ",
         "|||||||  |  |||||||  |  |||||||",
-        "|           |     |           |",
-        "|           |     |           |",
+        "            |     |            ",
+        "            |     |            ",
         "|||||||  |  |||||||  |  |||||||",
         "      |  |           |  |      ",
         "      |  |           |  |      ",
@@ -45,9 +45,10 @@ mazeInString =
         "|||||||||||||||||||||||||||||||"
     ]
 
--- iMazeStr contains array of strings indexed with line no (i,str)
+-- contains array of strings indexed with line no (i,str)
 iMazeStr = zip [0..] mazeInString
--- ij contains array of char indexed with line no and char no (i,j, str)
+
+-- contains array of char indexed with line no and char no (i,j, str)
 ijMazeStr :: [[(Float, Float, Char)]]
 ijMazeStr = map f iMazeStr
     where
@@ -60,10 +61,11 @@ charToPic (i, j, chr) =
         -- use negative index for i to avoid flipping
         -- translate offsets given picture with x,y value
         '|' -> translate (j * (blockSize)) (i*(-blockSize)) wallBlock
-        ' ' -> translate (j * (blockSize)) (i*(-blockSize)) $ color white $ rectangleWire blockSize blockSize
-        x -> blank -- for spaces and tabs
+        -- used to highlight spac for better debugging
+        -- ' ' -> translate (j * (blockSize)) (i*(-blockSize)) $ color white $ rectangleWire blockSize blockSize
+        x -> blank
         where
-            wallBlock = color wallColor $ rectangleWire blockSize blockSize
+            wallBlock = color wallColor $ rectangleSolid blockSize blockSize
 
 -- array containing only the indices with walls
 wallIndex :: [(Float,Float)]
@@ -71,6 +73,8 @@ wallIndex = foldr (++) [] [[((-i) * blockSize, j * blockSize) | (i,j,chr) <- str
 intWallIndex :: [(Int,Int)]
 intWallIndex = map (\(x,y) -> (round x, round y)) wallIndex
 
+-- no use for this code yet
+-- array containing only spaces
 spaceIndex :: [Vector]
 spaceIndex = [(i,j) | (i,j,chr) <- foldedMazeStr, isSpace (i,j)]
     where
@@ -78,8 +82,8 @@ spaceIndex = [(i,j) | (i,j,chr) <- foldedMazeStr, isSpace (i,j)]
         foldedMazeStr = foldr (++) [] ijMazeStr
 
 -- renderMaze converts [[(i,j,char)]] -> Picture
--- array of char pictures -> line :: Picture using pictures () from gloss
--- array of line pictures -> single picture using pictures () from gloss
+-- array of char pictures -> line picture
+-- array of line pictures -> single picture
 renderMaze :: [[(Float, Float, Char)]] -> Picture
 renderMaze ijMazeStr = pictures [pictures [charToPic ijchr | ijchr <- line] | line <- ijMazeStr]
 

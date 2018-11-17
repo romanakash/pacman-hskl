@@ -5,6 +5,10 @@ import           Graphics.Gloss
 import           GameState
 import           Maze                           ( intWallIndex )
 
+{-- UPDATE function to check if pacman has hit a wall
+    uses wallCollsion for detection
+    if hit sets pac vel = zeroVel
+--}
 wallBounce :: PacGame -> PacGame
 wallBounce game
         |
@@ -15,70 +19,62 @@ wallBounce game
         | otherwise = game
     where
         -- pacman
-        (lx, ly)   = (loc $ pacman game)
-        (vx, vy)   = (vel $ pacman game)
-        -- round off lx,ly to keep it as a multiple of blocksize
-        lx'        = fromIntegral $ round lx
-        ly'        = fromIntegral $ round ly
-        -- inky
-        (ix , iy ) = (loc $ inky game)
-        (vix, viy) = (loc $ inky game)
-        ix'        = fromIntegral $ round ix
-        iy'        = fromIntegral $ round iy
-        -- pinky
-        (px , py ) = (loc $ pinky game)
-        (vpx, vpy) = (loc $ pinky game)
-        px'        = fromIntegral $ round px
-        py'        = fromIntegral $ round py
-        -- blinky
-        (bx , by ) = (loc $ blinky game)
-        (vbx, vby) = (loc $ blinky game)
-        bx'        = fromIntegral $ round bx
-        by'        = fromIntegral $ round by
-        -- clyde
-        (cx , cy ) = (loc $ clyde game)
-        (vcx, vcy) = (loc $ clyde game)
-        cx'        = fromIntegral $ round cx
-        cy'        = fromIntegral $ round iy
+        (lx, ly) = (loc $ pacman game)
+        (vx, vy) = (vel $ pacman game)
+        -- round off lx,ly to keep it as a multiple of blockSize
+        lx'      = fromIntegral $ round lx
+        ly'      = fromIntegral $ round ly
 
--- takes pacVel, pacLoc and it detects if it hits a wall
+-- takes pac vel, pac loc and it detects if it hits a wall
+-- intWallIndex if of form (i,j) check i = y, j = x
+-- add or subtract blockOffset according to vel to get relevant edge
+-- checks if that edge is a wall
 wallCollision :: Vector -> Vector -> Bool
 wallCollision (vx, vy) (x, y)
         |
-    -- when moving
-    -- right
+        -- when moving right
           (vx, vy) == rightVel pacSpeed
         = elem (ry + rBlockOffset, rx + rNextBlock) intWallIndex
                 || elem (ry - rBlockOffset, rx + rNextBlock) intWallIndex
         |
-    -- left
+        -- left
           (vx, vy) == leftVel pacSpeed
         = elem (ry + rBlockOffset, rx - rNextBlock) intWallIndex
                 || elem (ry - rBlockOffset, rx - rNextBlock) intWallIndex
         |
-    -- up
+        -- up
           (vx, vy) == upVel pacSpeed
         = elem (ry + rNextBlock, rx + rBlockOffset) intWallIndex
                 || elem (ry + rNextBlock, rx - rBlockOffset) intWallIndex
         |
-    -- down
+        -- down
           (vx, vy) == downVel pacSpeed
         = elem (ry - rNextBlock, rx + rBlockOffset) intWallIndex
                 || elem (ry - rNextBlock, rx - rBlockOffset) intWallIndex
         |
-    -- when stationary make sure wallCollsion is false to make sure pacman can move again
+        -- when stationary make sure wallCollsion is false to make sure pacman can move again
           otherwise
         = False
         where (rx, ry) = (round x, round y)
 
--- checks if a valid move is available
+{-- Checks if a move is valid for the current location
+        used by turnGhost and executeMove
+--}
 isValidMove :: Vector -> Move -> Bool
-isValidMove (x, y) move = if condition
--- if not in wallIndex return true
-        then not $ or $ map check pathways
-        else False
-        -- get the value of nextBlock and nextNextBlock of x,y
+isValidMove (x, y) move = if condition then notWall else False
     where
+        -- makes sure a move occurs only when (x,y) is a multiple of blockSize
+        -- don't know why we should do this but the game breaks if not
+        condition =
+                (mod (round $ x + blockOffset) (round blockSize))
+                        == 0
+                        && (mod (round $ y + blockOffset) (round blockSize))
+                        == 0
+        -- if not in wallIndex return true
+        notWall  = not $ or $ map check pathways
+        -- checks whether the x',y' are in intWallIndex
+        check (x', y') = elem ((round y'), (round x')) intWallIndex
+        -- get the value of nextBlock and nextNextBlock of x,y
         pathways = case move of
                 UP ->
                         [ (x + i, y + j)
@@ -101,11 +97,3 @@ isValidMove (x, y) move = if condition
                         , j <- [-blockOffset, blockOffset]
                         ]
                 _ -> [(0, 0)] -- (0,0) is always in the wallIndex
-            -- a valid move can only occur when pacLoc x,y is a multiple of blockSize
-        condition =
-                (mod (round $ x + blockOffset) (round blockSize))
-                        == 0
-                        && (mod (round $ y + blockOffset) (round blockSize))
-                        == 0
-            -- checks where the x',y' are in intWallIndex
-        check (x', y') = elem ((round y'), (round x')) intWallIndex
