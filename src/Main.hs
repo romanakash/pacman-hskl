@@ -47,9 +47,6 @@ initialState = Game
         , ghostSpeed = 120
         }
 
--- round off lx,ly to keep it as a multiple of blocksize
--- remove the executed move from the moves array
--- standard game states for moving in different directions
 -- handles User Input
 handleKeys :: Event -> PacGame -> PacGame
 handleKeys (EventKey (SpecialKey key) _ _ _) game = case key of
@@ -62,40 +59,53 @@ handleKeys (EventKey (SpecialKey key) _ _ _) game = case key of
         -- nub makes sure pacman doesn't move in the same direction twice
 handleKeys _ game = game
 
-renderUI :: PacGame -> Picture
-renderUI game =
-        color white
-                $  scale 0.1 0.1
-                $  Text
-                $  show (lx, ly)
-                ++ show totalLives
-                ++ show totalDots
-                ++ show clock
-                ++ show (ghostMode game)
-    where
-        clock      = time game
-        totalDots  = length (dots game)
-        totalLives = (lives game)
-        -- pacman
-        (lx , ly ) = (loc $ pacman game)
-        (vx , vy ) = (vel $ pacman game)
-        -- inky
-        (ix , iy ) = (loc $ inky game)
-        (vix, viy) = (vel $ inky game)
+{-- UPDATE functions to keep track of various game states --}
 
+-- runs the timer, is called fps times for one second
+updateTime :: PacGame -> PacGame
+updateTime game = game { time = (time game) + 1 / fromIntegral fps }
+
+-- checks if pacman has eaten all the dots
 isDotsComplete :: PacGame -> PacGame
 isDotsComplete game | length (dots game) == 0 = game { status = WON }
                     | otherwise               = game
 
+-- checks if pacman is out of lives
 outOfLives :: PacGame -> PacGame
 outOfLives game | (lives game) <= 0 = game { status = LOST }
                 | otherwise         = game
 
+-- changes ghostMode for a particular point in time
+changeGhostMode :: PacGame -> PacGame
+changeGhostMode game | seconds < 7  = game { ghostMode = SCATTER }
+                     | seconds < 27 = game { ghostMode = CHASE }
+                     | seconds < 32 = game { ghostMode = SCATTER }
+                     | seconds < 37 = game { ghostMode = CHASE }
+                     | seconds < 42 = game { ghostMode = SCATTER }
+                     | otherwise    = game { ghostMode = CHASE }
+        where seconds = time game
+
 renderVictory :: Picture
-renderVictory = color white $ scale 0.1 0.1 $ Text "You won"
+renderVictory =
+        translate (-300) 300 $ color white $ scale 0.5 0.5 $ Text "You won"
 
 renderDefeat :: Picture
-renderDefeat = color white $ scale 0.1 0.1 $ Text "You lost"
+renderDefeat =
+        translate (-300) 300 $ color white $ scale 0.5 0.5 $ Text "You lost"
+
+
+-- renders the UI for the game
+renderUI :: PacGame -> Picture
+renderUI game = color white $ scale 0.2 0.2 $ translate (-150) 850 $ pictures
+        [l, lvs, tDts, clk, aiMd]
+    where
+        l    = Text $ "Pacman location (x,y)= " ++ show (loc $ pacman game)
+        lvs  = translate 0 (-200) $ Text $ "Lives left: " ++ show (lives game)
+        tDts = translate 0 (-400) $ Text $ "Dots left: " ++ show
+                (length $ dots game)
+        clk  = translate 0 (-600) $ Text $ "Timer: " ++ show (time game)
+        aiMd = translate 0 (-800) $ Text $ "Ghost Mode: " ++ show
+                (ghostMode game)
 
 mainWindow :: Display
 mainWindow = InWindow "Pacman" (1000, 1000) (0, 0)
@@ -115,18 +125,6 @@ render game
                 , renderUI game
                 , renderDots game
                 ]
-
-changeGhostMode :: PacGame -> PacGame
-changeGhostMode game | seconds < 7  = game { ghostMode = SCATTER }
-                     | seconds < 27 = game { ghostMode = CHASE }
-                     | seconds < 32 = game { ghostMode = SCATTER }
-                     | seconds < 37 = game { ghostMode = CHASE }
-                     | seconds < 42 = game { ghostMode = SCATTER }
-                     | otherwise    = game { ghostMode = CHASE }
-        where seconds = time game
-
-updateTime :: PacGame -> PacGame
-updateTime game = game { time = (time game) + 1 / 60 }
 
 main :: IO ()
 main = do
