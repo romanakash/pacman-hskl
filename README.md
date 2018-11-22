@@ -5,6 +5,7 @@ My attempt at creating a mini version of the classic retro game Pacman with hask
 To run the game use
 
 `cabal install`
+
 `cabal run`
 
 Use the arrow keys to control pacman
